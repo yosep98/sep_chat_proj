@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEP 로그인 Test</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-pills card-header-pills" id="authTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="login-tab" data-bs-toggle="pill" data-bs-target="#login" type="button" role="tab">로그인</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="signup-tab" data-bs-toggle="pill" data-bs-target="#signup" type="button" role="tab">회원가입</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="authTabContent">
+                            <!-- 로그인 폼 -->
+                            <div class="tab-pane fade show active" id="login" role="tabpanel">
+                                <form id="loginForm">
+                                    <div class="mb-3">
+                                        <label for="loginEmail" class="form-label">이메일</label>
+                                        <input type="email" class="form-control" id="loginEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="loginPassword" class="form-label">비밀번호</label>
+                                        <input type="password" class="form-control" id="loginPassword" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">로그인</button>
+                                </form>
+                            </div>
+                            
+                            <!-- 회원가입 폼 -->
+                            <div class="tab-pane fade" id="signup" role="tabpanel">
+                                <form id="signupForm">
+                                    <div class="mb-3">
+                                        <label for="signupEmail" class="form-label">이메일</label>
+                                        <input type="email" class="form-control" id="signupEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="signupPassword" class="form-label">비밀번호</label>
+                                        <input type="password" class="form-control" id="signupPassword" minlength="4" maxlength="20" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="signupPasswordConfirm" class="form-label">비밀번호 확인</label>
+                                        <input type="password" class="form-control" id="signupPasswordConfirm" minlength="4" maxlength="20" required>
+                                        <div class="invalid-feedback" id="passwordMismatchError">
+                                            비밀번호가 일치하지 않습니다.
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="signupName" class="form-label">이름</label>
+                                        <input type="text" class="form-control" id="signupName" maxlength="10" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="signupProfileImage" class="form-label">프로필 이미지 (선택사항)</label>
+                                        <input type="file" class="form-control" id="signupProfileImage" accept="image/*">
+                                        <div class="form-text">JPG, PNG, GIF 파일만 업로드 가능 (최대 10MB)</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">회원가입</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 사용자 정보 표시 영역 (로그인 후) -->
+                <div class="card mt-3" id="userInfo" style="display: none;">
+                    <div class="card-body text-center">
+                        <div class="profile-image-container mb-3" style="width: 80px; height: 80px; margin: 0 auto; position: relative;">
+                            <img id="userProfileImage" src="" alt="프로필 이미지" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover; display: none; position: absolute;">
+                            <div id="defaultProfileIcon" class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; position: absolute;">
+                                <i class="text-white" style="font-size: 2rem;">👤</i>
+                            </div>
+                        </div>
+                        <h5 class="card-title">환영합니다!</h5>
+                        <p class="card-text" id="userNameDisplay"></p>
+                        <p class="card-text small text-muted" id="userEmailDisplay"></p>
+                        <button class="btn btn-outline-danger" id="logoutBtn">로그아웃</button>
+                    </div>
+                </div>
+                
+                <!-- 알림 메시지 -->
+                <div id="alertContainer" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api/auth';
+        
+        // 알림 메시지 표시 함수
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            alertContainer.innerHTML = alertHtml;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+        
+        // 로그인 폼 처리
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    const userData = result.data;
+                    console.log('로그인 응답 데이터:', userData); // 디버깅용
+                    
+                    document.getElementById('userNameDisplay').textContent = `${userData.name}님, 안녕하세요!`;
+                    document.getElementById('userEmailDisplay').textContent = userData.email;
+                    
+                    // 프로필 이미지 처리
+                    const profileImage = document.getElementById('userProfileImage');
+                    const defaultIcon = document.getElementById('defaultProfileIcon');
+                    
+                    console.log('프로필 이미지 경로:', userData.profileImagePath); // 디버깅용
+                    
+                    if (userData.profileImagePath) {
+                        const imageUrl = `http://localhost:8080/uploads/profiles/${userData.profileImagePath}`;
+                        console.log('이미지 URL:', imageUrl); // 디버깅용
+                        
+                        profileImage.onload = function() {
+                            console.log('이미지 로드 성공');
+                            profileImage.style.display = 'block';
+                            profileImage.style.zIndex = '2';
+                            defaultIcon.style.display = 'none';
+                        };
+                        
+                        profileImage.onerror = function() {
+                            console.log('이미지 로드 실패 - 기본 아이콘 표시');
+                            profileImage.style.display = 'none';
+                            defaultIcon.style.display = 'flex';
+                            defaultIcon.style.zIndex = '1';
+                        };
+                        
+                        profileImage.src = imageUrl;
+                    } else {
+                        console.log('프로필 이미지가 없습니다'); // 디버깅용
+                        profileImage.style.display = 'none';
+                        defaultIcon.style.display = 'flex';
+                    }
+                    
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.querySelector('.card').style.display = 'none';
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('로그인 중 오류가 발생했습니다.', 'danger');
+                console.error('Login error:', error);
+            }
+        });
+        
+        // 비밀번호 확인 실시간 검증
+        document.getElementById('signupPasswordConfirm').addEventListener('input', function() {
+            const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = this.value;
+            const errorDiv = document.getElementById('passwordMismatchError');
+            
+            if (passwordConfirm && password !== passwordConfirm) {
+                this.classList.add('is-invalid');
+                errorDiv.style.display = 'block';
+            } else {
+                this.classList.remove('is-invalid');
+                errorDiv.style.display = 'none';
+            }
+        });
+        
+        // 회원가입 폼 처리
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+            const name = document.getElementById('signupName').value;
+            const profileImageFile = document.getElementById('signupProfileImage').files[0];
+            
+            // 프론트엔드에서 비밀번호 일치 확인
+            if (password !== passwordConfirm) {
+                showAlert('비밀번호가 일치하지 않습니다.', 'danger');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('passwordConfirm', passwordConfirm);
+            formData.append('name', name);
+            if (profileImageFile) {
+                formData.append('profileImage', profileImageFile);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/signup-with-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    document.getElementById('signupForm').reset();
+                    // 로그인 탭으로 전환
+                    document.getElementById('login-tab').click();
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('회원가입 중 오류가 발생했습니다.', 'danger');
+                console.error('Signup error:', error);
+            }
+        });
+        
+        // 로그아웃 처리
+        document.getElementById('logoutBtn').addEventListener('click', async function() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });git
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'info');
+                    document.getElementById('userInfo').style.display = 'none';
+                    document.querySelector('.card').style.display = 'block';
+                    document.getElementById('loginForm').reset();
+                }
+            } catch (error) {
+                showAlert('로그아웃 중 오류가 발생했습니다.', 'danger');
+                console.error('Logout error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
